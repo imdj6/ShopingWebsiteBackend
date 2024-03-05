@@ -1,5 +1,5 @@
 const express=require("express");
-const { authenticate } = require("../../../../common/middlewares/authMiddleware");
+const { authenticate } = require("../../../middlewares/authMiddleware");
 const orderCntrl = require("../../../controller/order/orderCntrl");
 
 const router=express.Router();

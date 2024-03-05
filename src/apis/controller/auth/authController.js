@@ -1,22 +1,45 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../../models/User");
+const {uploadoncloudinary}=require("../../../common/utils/cloudinary")
 require("dotenv").config();
+const { validationResult } = require('express-validator');
 const secretKey = process.env.KEY || 'default-secret';
 const authController = {
     register: async (req, res) => {
         try {
-            const user = new User(req.body);
-
-            const emailValidation = await User.findOne({ email: user.email });
+            const errors = validationResult(req);
+            if (!errors.isEmpty()) {
+                return res.status(400).json({ errors: errors.array() });
+            }
+            const emailValidation = await User.findOne({ email: req.body.email});
             if (emailValidation) {
                 return res.status(409).json({ message: 'User email already exists' });
             }
-            const phoneValidation = await User.findOne({ phone: user.phone });
+            const phoneValidation = await User.findOne({ phone: req.body.phone });
             if (phoneValidation) {
                 return res.status(409).json({ message: 'Phone number already exists' });
             }
+            console.log(req.body.profilePicture);
+            if(!req.body.profilePicture){
+                return res.status(400).json({message:"profile picture required"})
+            }
+            const profilePicturepath = req.url?.profilePicture[0]?.path;
+            if(!profilePicturepath || profilePicture=="undefined"){
+                return res.status(400).json({ message: 'Profile Picture Required' });
+            }
+            const profilePicture=await uploadoncloudinary(profilePicturepath);
+            if(!profilePicture){
+                return res.status(400).json({ message: 'Error uploading Profile Picture' });
+            }
 
+            const user = new User({
+                name: req.body.name,
+                email: req.body.email,
+                phone: req.body.phone,
+                password: req.body.password,
+                profilePicture: profilePicture // Assign Cloudinary URL here
+            });
             const token = await user.generateToken({ expiresIn: "24h" });
             console.log("Generated token: " + token);
 
@@ -53,7 +76,7 @@ const authController = {
     },
     getuserProfile: (req, res, next) => {
         try {
-            const { tokens,password,orders,reviews, ...userData } = req.user.toObject();
+            const { tokens, password, orders, reviews, ...userData } = req.user.toObject();
             res.status(200).json(userData);
         } catch (error) {
             next(error)
