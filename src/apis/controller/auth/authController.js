@@ -25,12 +25,8 @@ const authController = {
             await user.save();
             res.status(201).json({ message: 'User registered successfully' });
         } catch (error) {
-            // Check if the error is due to a duplicate key (phone) conflict
-            if (error.code === 11000 && error.keyPattern && error.keyPattern.phone === 1) {
-                res.status(409).json({ message: 'Phone number is already registered' });
-            } else {
-                res.status(400).send(error);
-            }
+            // Handle error
+            res.status(400).send(error);
         }
     },
     login: async (req, res) => {
@@ -46,10 +42,8 @@ const authController = {
             console.log("login page" + isPasswordValid);
 
             if (isPasswordValid) {
-
-                const accessToken = jwt.sign({ userId: user._id }, secretKey, { expiresIn: '24h' });
-                // const token = await user.generateToken({ expiresIn: "24h" });
-                return res.status(200).json({ message: 'Login successful!', accessToken, user: email });
+                const token = await user.generateToken({ expiresIn: "24h" });
+                return res.status(200).json({ message: 'Login successful!', token, user: email });
             } else {
                 return res.status(401).json({ message: 'Invalid credentials' });
             }
@@ -57,6 +51,14 @@ const authController = {
             res.status(500).json({ message: 'Server error' });
         }
     },
+    getuserProfile: (req, res, next) => {
+        try {
+            const { tokens,password,orders,reviews, ...userData } = req.user.toObject();
+            res.status(200).json(userData);
+        } catch (error) {
+            next(error)
+        }
+    }
 }
 
 module.exports = authController

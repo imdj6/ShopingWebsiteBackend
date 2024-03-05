@@ -20,7 +20,7 @@ const authMiddleware = {
 
       const decodedToken = jwt.verify(token, process.env.KEY);
 
-      const user = await User.findById(decodedToken.userId);
+      const user = await User.findById(decodedToken._id);
 
       if (!user) {
         return res
