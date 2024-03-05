@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../../models/User");
-const {uploadoncloudinary}=require("../../../common/utils/cloudinary")
+const uploadoncloudinary=require("../../../common/utils/cloudinary");
 require("dotenv").config();
 const { validationResult } = require('express-validator');
 const secretKey = process.env.KEY || 'default-secret';
@@ -12,7 +12,7 @@ const authController = {
             if (!errors.isEmpty()) {
                 return res.status(400).json({ errors: errors.array() });
             }
-            const emailValidation = await User.findOne({ email: req.body.email});
+            const emailValidation = await User.findOne({ email: req.body.email });
             if (emailValidation) {
                 return res.status(409).json({ message: 'User email already exists' });
             }
@@ -20,35 +20,39 @@ const authController = {
             if (phoneValidation) {
                 return res.status(409).json({ message: 'Phone number already exists' });
             }
-            console.log(req.body.profilePicture);
-            if(!req.body.profilePicture){
-                return res.status(400).json({message:"profile picture required"})
+            console.log(req.file)
+            if (!req.file) {
+                return res.status(400).json({ message: 'Profile picture required' });
             }
-            const profilePicturepath = req.url?.profilePicture[0]?.path;
-            if(!profilePicturepath || profilePicture=="undefined"){
+            const profilePicturepath = req.file.path;
+            if (!profilePicturepath) {
                 return res.status(400).json({ message: 'Profile Picture Required' });
             }
-            const profilePicture=await uploadoncloudinary(profilePicturepath);
-            if(!profilePicture){
+    
+            // Upload profile picture to Cloudinary
+            const result = await uploadoncloudinary(profilePicturepath);
+            console.log(result)
+            if (!result || !result.secure_url) {
                 return res.status(400).json({ message: 'Error uploading Profile Picture' });
             }
-
+    
             const user = new User({
                 name: req.body.name,
                 email: req.body.email,
                 phone: req.body.phone,
                 password: req.body.password,
-                profilePicture: profilePicture // Assign Cloudinary URL here
+                profilePicture: result.secure_url // Assign Cloudinary URL here
             });
             const token = await user.generateToken({ expiresIn: "24h" });
             console.log("Generated token: " + token);
-
+    
             res.cookie("jwt", token);
-
+    
             await user.save();
             res.status(201).json({ message: 'User registered successfully' });
         } catch (error) {
             // Handle error
+            console.error(error);
             res.status(400).send(error);
         }
     },
