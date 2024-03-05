@@ -10,7 +10,8 @@ const userSchema = new mongoose.Schema({
     },
     email: {
         type: String,
-        required: true
+        required: true,
+        unique: true
     },
     phone: {
         type: Number,
@@ -21,12 +22,11 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    // role:{
-    //     type:String,
-    //     required:true
-    // },
+    role: { type: String, enum: ['Admin', 'User'], default: 'User' },
+    profilePicture: { type: String },
+    orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Review' }],
     createdAt: { type: Date, default: Date.now },
-
     tokens: [{
         token: {
             type: String,
@@ -37,16 +37,34 @@ const userSchema = new mongoose.Schema({
 
 });
 
-userSchema.methods.generateToken = async function () {
+userSchema.methods.generateToken = async function (options) {
     try {
-        const tokenuser = jwt.sign({ _id: this._id.toString() }, process.env.KEY, { expiresIn: '2h' });
-        this.tokens = this.tokens.concat({ token: tokenuser })
+        const token = jwt.sign({ _id: this._id.toString(), role: this.role.toString() }, process.env.KEY, options);
+
+        // Remove expired tokens
+        this.tokens = this.tokens.filter(tokenObj => {
+            try {
+                jwt.verify(tokenObj.token, process.env.KEY);
+                return true; // Token is valid, keep it
+            } catch (error) {
+                return false; // Token is expired, remove it
+            }
+        });
+
+        // Limit maximum tokens to 2
+        if (this.tokens.length >= 2) {
+            this.tokens.shift(); // Remove the oldest token
+        }
+
+        this.tokens.push({ token });
+
         await this.save();
-        return tokenuser
+        return token;
     } catch (error) {
-        console.log(error)
+        console.log(error);
+        throw new Error("Token generation failed");
     }
-}
+};
 
 userSchema.pre("save", async function (next) {
     if (this.isModified("password")) {
