@@ -5,5 +5,6 @@ const router=express.Router();
 
 
 router.post("/createreview",authenticate,ReviewCntrl.createreview);
+router.delete("/:id",authenticate,ReviewCntrl.deleteReviewById);
 
 module.exports=router;

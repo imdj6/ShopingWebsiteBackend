@@ -1,8 +1,8 @@
 const Review = require("../../models/Review");
-const Product=require("../../models/Product")
-const User=require('../../models/User')
+const Product = require("../../models/Product")
+const User = require('../../models/User')
 const ReviewServices = {
-    createReview: async (userId,reviewData) => {
+    createReview: async (userId, reviewData) => {
         try {
             // Validate that the product ID exists
             const product = await Product.findById(reviewData.productId);
@@ -30,6 +30,30 @@ const ReviewServices = {
             return review;
         } catch (error) {
             throw error;
+        }
+    },
+    deleteReviewById: async (reviewId, userId) => {
+        try {
+            console.log(userId)
+            // Find the review by ID and check if it exists
+            const review = await Review.findById(reviewId);
+            if (!review) {
+                return { success: false, message: "Review not found." };
+            }
+            if (userId.toString() !== review.user.toString()) {
+                return { success: false, message: "Forbidden: You don't have permission to delete this review." };
+            }
+            // Delete the review from the product
+            await Product.updateOne({ _id: review.product }, { $pull: { reviews: review._id } });
+
+            // Delete the review from the user
+            await User.updateOne({ _id: review.user }, { $pull: { reviews: review._id } });
+            await Review.findByIdAndDelete(reviewId);
+
+            return { success: true, message: "Review deleted successfully." };
+        } catch (error) {
+            console.error("Error deleting review:", error);
+            throw new Error("Internal server error.");
         }
     }
 };
